@@ -431,15 +431,6 @@
 
         <!-- ===== Mobile Layout ===== -->
         <div class="mobile-scroll">
-            <div class="video-section" id="mVideo">
-                <div id="mPh" class="mobile-placeholder">
-                    <div class="icon">🎤</div>
-                    <p>ค้นหาเพลงแล้วเริ่มร้องเลย!</p>
-                </div>
-                <div id="mPlayer"></div>
-                <button class="fs-btn" onclick="toggleFS()">⛶</button>
-                <button class="fs-close" onclick="exitFS()">✕</button>
-            </div>
             <div class="mobile-search">
                 <button class="karaoke-toggle active" id="krToggle2" onclick="toggleKaraoke()">
                     🎤 เฉพาะคาราโอเกะ
@@ -449,6 +440,15 @@
                     <input type="text" id="q2" placeholder="ค้นหาเพลงคาราโอเกะ..." />
                     <button class="search-btn" onclick="doSearch(document.getElementById('q2').value)">🔍</button>
                 </div>
+            </div>
+            <div class="video-section" id="mVideo">
+                <div id="mPh" class="mobile-placeholder">
+                    <div class="icon">🎤</div>
+                    <p>ค้นหาเพลงแล้วเริ่มร้องเลย!</p>
+                </div>
+                <div id="mPlayer"></div>
+                <button class="fs-btn" onclick="toggleFS()">⛶</button>
+                <button class="fs-close" onclick="exitFS()">✕</button>
             </div>
             <div class="mobile-controls">
                 <div class="ctrls">

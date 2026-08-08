@@ -18,7 +18,7 @@ function searchYouTube(query) {
                     gl: 'TH'
                 }
             },
-            query: query + ' karaoke'
+            query: query
         });
 
         const options = {

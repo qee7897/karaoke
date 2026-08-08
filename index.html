@@ -35,6 +35,49 @@
             white-space: nowrap;
         }
 
+        .karaoke-toggle {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 20px;
+            border: 1px solid rgba(124,77,255,0.3);
+            background: rgba(255,255,255,0.05);
+            cursor: pointer; white-space: nowrap;
+            font-size: 0.8rem; color: rgba(255,255,255,0.5);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .karaoke-toggle.active {
+            border-color: #ff6ec7;
+            background: rgba(255,110,199,0.15);
+            color: #ff6ec7;
+        }
+
+        .karaoke-toggle .toggle-dot {
+            width: 32px; height: 18px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 9px;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .karaoke-toggle.active .toggle-dot {
+            background: #ff6ec7;
+        }
+
+        .karaoke-toggle .toggle-dot::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 14px; height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .karaoke-toggle.active .toggle-dot::after {
+            left: 16px;
+        }
+
         .search-wrap { flex: 1; display: flex; gap: 6px; max-width: 500px; }
 
         .search-wrap input {
@@ -128,6 +171,7 @@
             .search-wrap { max-width: 100%; }
             .search-wrap input { padding: 9px 12px; font-size: 0.9rem; }
             .search-btn { padding: 9px 14px; font-size: 0.9rem; }
+            .karaoke-toggle { font-size: 0.7rem; padding: 5px 10px; }
 
             .pc-main { display: none; }
 
@@ -309,6 +353,10 @@
         <!-- Header -->
         <div class="header">
             <h1>🎤 Karaoke</h1>
+            <button class="karaoke-toggle active" id="krToggle" onclick="toggleKaraoke()">
+                🎤 เฉพาะคาราโอเกะ
+                <div class="toggle-dot"></div>
+            </button>
             <div class="search-wrap">
                 <input type="text" id="q" placeholder="ค้นหาเพลงคาราโอเกะ..." />
                 <button class="search-btn" onclick="doSearch()">🔍 ค้นหา</button>
@@ -424,6 +472,7 @@
     <script>
         const API = '';
         let player, vid, playing = false, results = [], plist = JSON.parse(localStorage.getItem('kp')||'[]'), plIdx = -1, prog, fsMode = false;
+        let karaokeOnly = localStorage.getItem('ko') !== '0'; // default on
         const isMobile = window.innerWidth <= 768;
 
         // YouTube IFrame
@@ -448,11 +497,22 @@
             playing ? startProg() : stopProg();
         }
 
+        // Toggle karaoke mode
+        function toggleKaraoke() {
+            karaokeOnly = !karaokeOnly;
+            localStorage.setItem('ko', karaokeOnly ? '1' : '0');
+            document.getElementById('krToggle').classList.toggle('active', karaokeOnly);
+        }
+
+        // Init toggle state
+        document.getElementById('krToggle').classList.toggle('active', karaokeOnly);
+
         // Search
         async function doSearch(q) {
             q = q || document.getElementById('q').value.trim();
             if (!q) return;
             document.getElementById('q').value = q;
+            if (karaokeOnly) q = q + ' karaoke';
             const ph = isMobile ? 'mRE' : 'pcRE';
             const rl = isMobile ? 'mRL' : 'pcRL';
             document.getElementById(ph).style.display = 'none';

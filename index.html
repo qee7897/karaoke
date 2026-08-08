@@ -158,6 +158,7 @@
             }
 
             .mobile-scroll { display: none; }
+            .mobile-search { display: none; }
             .mobile-tabs { display: none; }
             .mobile-list { display: none; }
         }
@@ -168,10 +169,21 @@
 
             .header { padding: 8px 10px; gap: 6px; }
             .header h1 { font-size: 1rem; }
-            .search-wrap { max-width: 100%; }
-            .search-wrap input { padding: 9px 12px; font-size: 0.9rem; }
-            .search-btn { padding: 9px 14px; font-size: 0.9rem; }
-            .karaoke-toggle { font-size: 0.7rem; padding: 5px 10px; }
+
+            .header .search-wrap { display: none; }
+            .header .karaoke-toggle { display: none; }
+
+            .mobile-search {
+                display: flex; gap: 6px; padding: 8px 10px;
+                background: linear-gradient(135deg, #1a0533, #2d1b69);
+                align-items: center;
+            }
+
+            .mobile-search .search-wrap { flex: 1; display: flex; gap: 6px; }
+
+            .mobile-search .karaoke-toggle {
+                display: flex; font-size: 0.7rem; padding: 5px 10px;
+            }
 
             .pc-main { display: none; }
 
@@ -428,6 +440,16 @@
                 <button class="fs-btn" onclick="toggleFS()">⛶</button>
                 <button class="fs-close" onclick="exitFS()">✕</button>
             </div>
+            <div class="mobile-search">
+                <button class="karaoke-toggle active" id="krToggle2" onclick="toggleKaraoke()">
+                    🎤 เฉพาะคาราโอเกะ
+                    <div class="toggle-dot"></div>
+                </button>
+                <div class="search-wrap">
+                    <input type="text" id="q2" placeholder="ค้นหาเพลงคาราโอเกะ..." />
+                    <button class="search-btn" onclick="doSearch(document.getElementById('q2').value)">🔍</button>
+                </div>
+            </div>
             <div class="mobile-controls">
                 <div class="ctrls">
                     <button class="ctrl" onclick="prev()">⏮</button>
@@ -502,16 +524,19 @@
             karaokeOnly = !karaokeOnly;
             localStorage.setItem('ko', karaokeOnly ? '1' : '0');
             document.getElementById('krToggle').classList.toggle('active', karaokeOnly);
+            document.getElementById('krToggle2').classList.toggle('active', karaokeOnly);
         }
 
         // Init toggle state
         document.getElementById('krToggle').classList.toggle('active', karaokeOnly);
+        document.getElementById('krToggle2').classList.toggle('active', karaokeOnly);
 
         // Search
         async function doSearch(q) {
-            q = q || document.getElementById('q').value.trim();
+            q = q || document.getElementById('q').value.trim() || (document.getElementById('q2') ? document.getElementById('q2').value.trim() : '');
             if (!q) return;
             document.getElementById('q').value = q;
+            if (document.getElementById('q2')) document.getElementById('q2').value = q;
             if (karaokeOnly) q = q + ' karaoke';
             const ph = isMobile ? 'mRE' : 'pcRE';
             const rl = isMobile ? 'mRL' : 'pcRL';
@@ -655,6 +680,9 @@
         function fmt(s) { s=Math.floor(s); return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); }
 
         document.getElementById('q').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+        if (document.getElementById('q2')) {
+            document.getElementById('q2').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(document.getElementById('q2').value); });
+        }
         renderP();
     </script>
 </body>

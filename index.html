@@ -300,24 +300,46 @@
         }
 
         /* ===== Fullscreen Mode ===== */
-        .video-area:fullscreen,
-        .video-area:-webkit-full-screen {
-            background: #000;
-        }
-
         body.fs-mode .header,
         body.fs-mode .controls-bar,
+        body.fs-mode .sidebar-toggle { display: none !important; }
+
         body.fs-mode .sidebar { display: none !important; }
+        body.fs-mode .sidebar-overlay { display: none !important; }
 
         body.fs-mode .main {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
             grid-template-columns: 1fr;
-            grid-template-rows: 1fr;
+            grid-template-rows: 1fr auto;
             height: 100vh;
             height: 100dvh;
+            z-index: 9999;
+            background: #000;
         }
 
         body.fs-mode .video-area {
             grid-column: 1; grid-row: 1;
+            min-height: 0;
+            max-height: none;
+        }
+
+        body.fs-mode .fs-close {
+            display: block;
+        }
+
+        .fs-close {
+            display: none;
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            font-size: 1.5rem;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 10;
         }
 
         /* ===== Mobile ===== */
@@ -399,6 +421,7 @@
             </div>
             <div id="player" style="display:none"></div>
             <button class="fs-btn" id="fsBtn" onclick="toggleFS()" title="ขยายเต็มจอ">⛶</button>
+            <button class="fs-close" id="fsClose" onclick="exitFS()" title="ออกจากเต็มจอ">✕</button>
         </div>
 
         <div class="controls-bar">
@@ -555,34 +578,24 @@
         }
 
         function enterFS() {
-            const el = document.getElementById('videoArea');
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-            else {
-                // Fallback: CSS fullscreen
-                fsMode = true;
-                document.body.classList.add('fs-mode');
-                document.getElementById('fsBtn').textContent = '⛶';
-            }
+            fsMode = true;
+            document.body.classList.add('fs-mode');
+            // Lock orientation to landscape if possible
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => {});
+                }
+            } catch(e) {}
         }
 
         function exitFS() {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else {
-                fsMode = false;
-                document.body.classList.remove('fs-mode');
-                document.getElementById('fsBtn').textContent = '⛶';
-            }
-        }
-
-        document.addEventListener('fullscreenchange', onFSChange);
-        document.addEventListener('webkitfullscreenchange', onFSChange);
-
-        function onFSChange() {
-            fsMode = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-            document.body.classList.toggle('fs-mode', fsMode);
-            document.getElementById('fsBtn').textContent = fsMode ? '⛶' : '⛶';
+            fsMode = false;
+            document.body.classList.remove('fs-mode');
+            try {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            } catch(e) {}
         }
 
         // ===== Progress =====

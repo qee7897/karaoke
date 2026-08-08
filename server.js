@@ -23,12 +23,16 @@ function searchYouTube(query) {
 
         const options = {
             hostname: 'www.youtube.com',
-            path: '/youtubei/v1/search?key=AIzaSy…qcW8',
+            path: '/youtubei/v1/search',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(searchData),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'X-Youtube-Client-Name': '1',
+                'X-Youtube-Client-Version': '2.20240101.00.00',
+                'Origin': 'https://www.youtube.com',
+                'Referer': 'https://www.youtube.com/'
             }
         };
 

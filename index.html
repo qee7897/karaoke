@@ -174,15 +174,32 @@
             .header .karaoke-toggle { display: none; }
 
             .mobile-search {
-                display: flex; gap: 6px; padding: 8px 10px;
+                display: flex; gap: 6px; padding: 6px 8px;
                 background: linear-gradient(135deg, #1a0533, #2d1b69);
                 align-items: center;
             }
 
-            .mobile-search .search-wrap { flex: 1; display: flex; gap: 6px; }
+            .mobile-search .search-wrap { flex: 1; display: flex; gap: 4px; }
+
+            .mobile-search .search-wrap input {
+                flex: 1; padding: 7px 10px; font-size: 0.85rem;
+                border-radius: 18px; border: 2px solid #7c4dff;
+                background: rgba(255,255,255,0.1); color: #fff; outline: none;
+            }
+
+            .mobile-search .search-wrap input:focus { border-color: #ff6ec7; }
+            .mobile-search .search-wrap input::placeholder { color: rgba(255,255,255,0.4); }
+
+            .mobile-search .search-btn {
+                padding: 7px 12px; font-size: 0.85rem;
+                border-radius: 18px; border: none;
+                background: linear-gradient(135deg, #7c4dff, #ff6ec7);
+                color: #fff; font-weight: bold; cursor: pointer;
+            }
 
             .mobile-search .karaoke-toggle {
-                display: flex; font-size: 0.7rem; padding: 5px 10px;
+                display: flex; font-size: 0.65rem; padding: 4px 8px;
+                flex-shrink: 0;
             }
 
             .pc-main { display: none; }
@@ -432,14 +449,14 @@
         <!-- ===== Mobile Layout ===== -->
         <div class="mobile-scroll">
             <div class="mobile-search">
-                <button class="karaoke-toggle active" id="krToggle2" onclick="toggleKaraoke()">
-                    🎤 เฉพาะคาราโอเกะ
-                    <div class="toggle-dot"></div>
-                </button>
                 <div class="search-wrap">
-                    <input type="text" id="q2" placeholder="ค้นหาเพลงคาราโอเกะ..." />
+                    <input type="text" id="q2" placeholder="ค้นหาเพลง..." />
                     <button class="search-btn" onclick="doSearch(document.getElementById('q2').value)">🔍</button>
                 </div>
+                <button class="karaoke-toggle active" id="krToggle2" onclick="toggleKaraoke()" title="เฉพาะคาราโอเกะ">
+                    🎤
+                    <div class="toggle-dot"></div>
+                </button>
             </div>
             <div class="video-section" id="mVideo">
                 <div id="mPh" class="mobile-placeholder">

@@ -349,6 +349,35 @@
         .act:hover { color: #ff6ec7; }
         .act.added { color: #0f0; }
 
+        .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .pl-toolbar {
+            display: flex; gap: 6px; padding: 8px 5px;
+            border-bottom: 1px solid rgba(124,77,255,0.15);
+            flex-wrap: wrap;
+        }
+        .pl-tool-btn {
+            flex: 1; min-width: 0;
+            padding: 6px 8px; border-radius: 8px;
+            border: 1px solid rgba(124,77,255,0.3);
+            background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
+            font-size: 0.72rem; cursor: pointer; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .pl-tool-btn.active { border-color: #ff6ec7; color: #ff6ec7; background: rgba(255,110,199,0.12); }
+        .pl-tool-btn.danger:hover { border-color: #ff5c5c; color: #ff5c5c; }
+
+        .hint { font-size: 0.68rem; color: rgba(255,255,255,0.25); margin-top: 6px; }
+
+        .toast {
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+            background: rgba(20,10,35,0.96); border: 1px solid rgba(255,110,199,0.4);
+            color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 0.82rem;
+            z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            max-width: 90vw; text-align: center;
+        }
+        .toast.show { opacity: 1; }
+
         .loading { text-align: center; padding: 25px; color: rgba(255,255,255,0.3); }
 
         .spinner {
@@ -388,9 +417,11 @@
             </button>
             <div class="search-wrap">
                 <input type="text" id="q" placeholder="ค้นหาเพลงคาราโอเกะ..." />
-                <button class="search-btn" onclick="doSearch()">🔍 ค้นหา</button>
+                <button class="search-btn" id="searchBtn1" onclick="doSearch()">🔍 ค้นหา</button>
             </div>
         </div>
+
+        <div class="toast" id="toast"></div>
 
         <!-- ===== PC Layout ===== -->
         <div class="pc-main">
@@ -430,10 +461,16 @@
                         <div class="empty" id="pcRE">
                             <div class="icon">🔍</div>
                             <p>ค้นหาเพลงคาราโอเกะได้เลย!</p>
+                            <p class="hint">💡 ปุ่มลัด: ← → กรอเพลง · Space เล่น/หยุด</p>
                         </div>
                         <div id="pcRL"></div>
                     </div>
                     <div class="pane" id="pcPP2">
+                        <div class="pl-toolbar">
+                            <button class="pl-tool-btn" id="pcShuffleBtn" onclick="toggleShuffle()">🔀 สุ่ม</button>
+                            <button class="pl-tool-btn" id="pcLoopBtn" onclick="cycleLoop()">🔁 ไม่วนซ้ำ</button>
+                            <button class="pl-tool-btn danger" onclick="clearPlaylist()">🗑️ ล้างทั้งหมด</button>
+                        </div>
                         <div class="empty" id="pcPE">
                             <div class="icon">🎵</div>
                             <p>ยังไม่มีเพลงใน Playlist</p>
@@ -450,7 +487,7 @@
             <div class="mobile-search">
                 <div class="search-wrap">
                     <input type="text" id="q2" placeholder="ค้นหาเพลง..." />
-                    <button class="search-btn" onclick="doSearch(document.getElementById('q2').value)">🔍</button>
+                    <button class="search-btn" id="searchBtn2" onclick="doSearch(document.getElementById('q2').value)">🔍</button>
                 </div>
                 <button class="karaoke-toggle active" id="krToggle2" onclick="toggleKaraoke()" title="เฉพาะคาราโอเกะ">
                     🎤
@@ -492,10 +529,16 @@
                     <div class="empty" id="mRE">
                         <div class="icon">🔍</div>
                         <p>ค้นหาเพลงคาราโอเกะได้เลย!</p>
+                        <p class="hint">💡 ปุ่มลัด: ← → กรอเพลง · Space เล่น/หยุด</p>
                     </div>
                     <div id="mRL"></div>
                 </div>
                 <div class="pane" id="mPP2">
+                    <div class="pl-toolbar">
+                        <button class="pl-tool-btn" id="mShuffleBtn" onclick="toggleShuffle()">🔀 สุ่ม</button>
+                        <button class="pl-tool-btn" id="mLoopBtn" onclick="cycleLoop()">🔁 ไม่วนซ้ำ</button>
+                        <button class="pl-tool-btn danger" onclick="clearPlaylist()">🗑️ ล้างทั้งหมด</button>
+                    </div>
                     <div class="empty" id="mPE">
                         <div class="icon">🎵</div>
                         <p>ยังไม่มีเพลงใน Playlist</p>
@@ -508,9 +551,19 @@
 
     <script>
         const API = '';
-        let player, vid, playing = false, results = [], plist = JSON.parse(localStorage.getItem('kp')||'[]'), plIdx = -1, prog, fsMode = false;
+        let player, vid, lastTitle = '', playing = false, results = [], plist = JSON.parse(localStorage.getItem('kp')||'[]'), plIdx = -1, prog, progTick = 0, fsMode = false;
         let karaokeOnly = localStorage.getItem('ko') !== '0'; // default on
+        let loopMode = localStorage.getItem('loop') || 'off'; // 'off' | 'all' | 'one'
+        let shuffleMode = localStorage.getItem('shuffle') === '1';
+        let searchAbort = null;
         const isMobile = window.innerWidth <= 768;
+        const savedVol = localStorage.getItem('vol');
+        const lastState = JSON.parse(localStorage.getItem('kv') || 'null');
+
+        // Restore saved volume into sliders
+        if (savedVol !== null) {
+            document.querySelectorAll('.vol').forEach(el => el.value = savedVol);
+        }
 
         // YouTube IFrame
         const tag = document.createElement('script');
@@ -522,17 +575,59 @@
             player = new YT.Player(target, {
                 height: '100%', width: '100%',
                 playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0, fs: 0, iv_load_policy: 3 },
-                events: { onReady: () => player.setVolume(80), onStateChange: onState }
+                events: {
+                    onReady: () => {
+                        player.setVolume(savedVol !== null ? parseInt(savedVol) : 80);
+                        resumeLastState();
+                    },
+                    onStateChange: onState,
+                    onError: onPlayerError
+                }
             });
         }
 
+        function resumeLastState() {
+            if (!lastState || !lastState.id) return;
+            vid = lastState.id;
+            lastTitle = lastState.title || '-';
+            player.cueVideoById({ videoId: lastState.id, startSeconds: lastState.time || 0 });
+            const phId = isMobile ? 'mPh' : 'pcPh';
+            const plId = isMobile ? 'mPlayer' : 'pcPlayer';
+            const npId = isMobile ? 'mNp' : 'pcNp';
+            const nptId = isMobile ? 'mNpt' : 'pcNpt';
+            document.getElementById(phId).style.display = 'none';
+            document.getElementById(plId).style.display = 'block';
+            document.getElementById(npId).style.display = 'flex';
+            document.getElementById(nptId).textContent = lastTitle;
+            const pi = plist.findIndex(p => p.id === lastState.id);
+            if (pi >= 0) plIdx = pi;
+            renderP();
+        }
+
+        function saveLastState() {
+            if (!vid || !player?.getCurrentTime) return;
+            const t = player.getCurrentTime() || 0;
+            localStorage.setItem('kv', JSON.stringify({ id: vid, title: lastTitle, time: t }));
+        }
+
+        function onPlayerError() {
+            showToast('⚠️ วิดีโอนี้เล่นไม่ได้ กำลังข้ามไปเพลงถัดไป...');
+            setTimeout(() => next(), 1500);
+        }
+
         function onState(e) {
-            if (e.data === YT.PlayerState.ENDED) next();
+            if (e.data === YT.PlayerState.ENDED) {
+                if (loopMode === 'one') { player.seekTo(0); player.playVideo(); }
+                else next();
+            }
             playing = e.data === YT.PlayerState.PLAYING;
             const btn = isMobile ? 'mPP' : 'pcPP';
             document.getElementById(btn).textContent = playing ? '⏸' : '▶️';
             playing ? startProg() : stopProg();
+            if (!playing) saveLastState();
         }
+
+        window.addEventListener('beforeunload', saveLastState);
 
         // Toggle karaoke mode
         function toggleKaraoke() {
@@ -546,7 +641,47 @@
         document.getElementById('krToggle').classList.toggle('active', karaokeOnly);
         document.getElementById('krToggle2').classList.toggle('active', karaokeOnly);
 
+        // Toast notifications
+        let toastTimer;
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Loop / Shuffle
+        function cycleLoop() {
+            loopMode = loopMode === 'off' ? 'all' : loopMode === 'all' ? 'one' : 'off';
+            localStorage.setItem('loop', loopMode);
+            updateLoopShuffleUI();
+        }
+        function toggleShuffle() {
+            shuffleMode = !shuffleMode;
+            localStorage.setItem('shuffle', shuffleMode ? '1' : '0');
+            updateLoopShuffleUI();
+        }
+        function updateLoopShuffleUI() {
+            const labels = { off: '🔁 ไม่วนซ้ำ', all: '🔁 วนทั้งหมด', one: '🔂 วนเพลงนี้' };
+            ['pcLoopBtn', 'mLoopBtn'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) { b.textContent = labels[loopMode]; b.classList.toggle('active', loopMode !== 'off'); }
+            });
+            ['pcShuffleBtn', 'mShuffleBtn'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) b.classList.toggle('active', shuffleMode);
+            });
+        }
+        updateLoopShuffleUI();
+
         // Search
+        function setSearching(state) {
+            ['searchBtn1', 'searchBtn2'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) b.disabled = state;
+            });
+        }
         async function doSearch(q) {
             q = q || document.getElementById('q').value.trim() || (document.getElementById('q2') ? document.getElementById('q2').value.trim() : '');
             if (!q) return;
@@ -558,14 +693,23 @@
             document.getElementById(ph).style.display = 'none';
             document.getElementById(rl).innerHTML = '<div class="loading"><div class="spinner"></div><p>กำลังค้นหา...</p></div>';
             if (isMobile) swTabM('r'); else swTab('r');
+
+            if (searchAbort) searchAbort.abort();
+            searchAbort = new AbortController();
+            const timeoutId = setTimeout(() => searchAbort.abort(), 30000);
+            setSearching(true);
             try {
-                const r = await fetch(`${API}/api/search?q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(30000) });
+                const r = await fetch(`${API}/api/search?q=${encodeURIComponent(q)}`, { signal: searchAbort.signal });
                 const d = await r.json();
                 if (d.error) throw new Error(d.error);
                 results = d.results || [];
                 renderR();
             } catch (e) {
-                document.getElementById(rl).innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+                if (e.name === 'AbortError') return;
+                document.getElementById(rl).innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>${escapeHtml(e.message)}</p></div>`;
+            } finally {
+                clearTimeout(timeoutId);
+                setSearching(false);
             }
         }
 
@@ -578,20 +722,25 @@
             }
             const html = results.map((s, i) => {
                 const inP = plist.some(p => p.id === s.id);
-                return `<div class="song ${vid===s.id?'playing':''}" onclick="play('${s.id}',\`${s.title.replace(/`/g,'\\`')}\`)">
-                    <img class="song-thumb" src="${s.thumb}" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${s.id}/mqdefault.jpg'">
-                    <div class="song-info"><div class="song-title">${s.title}</div><div class="song-meta">${s.channel}${s.duration?' · '+s.duration:''}</div></div>
+                return `<div class="song ${vid===s.id?'playing':''}" onclick="playResult(${i})">
+                    <img class="song-thumb" src="${escapeHtml(s.thumb)}" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${escapeHtml(s.id)}/mqdefault.jpg'">
+                    <div class="song-info"><div class="song-title">${escapeHtml(s.title)}</div><div class="song-meta">${escapeHtml(s.channel)}${s.duration?' · '+escapeHtml(s.duration):''}</div></div>
                     <div><button class="act ${inP?'added':''}" onclick="event.stopPropagation();addPl(${i})">${inP?'✅':'➕'}</button></div>
                 </div>`;
             }).join('');
             document.getElementById('pcRL').innerHTML = html;
             document.getElementById('mRL').innerHTML = html;
         }
+        function playResult(i) {
+            const s = results[i];
+            if (s) play(s.id, s.title);
+        }
 
         // Player
         function play(id, title) {
             if (!id || !player) return;
             vid = id;
+            lastTitle = title;
             if (isMobile) {
                 document.getElementById('mPh').style.display = 'none';
                 document.getElementById('mPlayer').style.display = 'block';
@@ -606,13 +755,41 @@
             player.loadVideoById(id);
             const pi = plist.findIndex(p => p.id === id);
             if (pi >= 0) plIdx = pi;
+            saveLastState();
             renderR(); renderP();
         }
 
         function togglePlay() { if (!player) return; playing ? player.pauseVideo() : player.playVideo(); }
-        function prev() { if (!plist.length) return; plIdx = (plIdx-1+plist.length)%plist.length; play(plist[plIdx].id, plist[plIdx].title); }
-        function next() { if (!plist.length) return; plIdx = (plIdx+1)%plist.length; play(plist[plIdx].id, plist[plIdx].title); }
-        function setVol(v) { if (player?.setVolume) player.setVolume(v); }
+        function prev() {
+            if (!plist.length) return;
+            if (shuffleMode && plist.length > 1) {
+                let r; do { r = Math.floor(Math.random()*plist.length); } while (r === plIdx);
+                plIdx = r;
+            } else {
+                plIdx = (plIdx-1+plist.length) % plist.length;
+            }
+            play(plist[plIdx].id, plist[plIdx].title);
+        }
+        function next() {
+            if (!plist.length) return;
+            if (shuffleMode && plist.length > 1) {
+                let r; do { r = Math.floor(Math.random()*plist.length); } while (r === plIdx);
+                plIdx = r;
+                play(plist[plIdx].id, plist[plIdx].title);
+                return;
+            }
+            let ni = plIdx + 1;
+            if (ni >= plist.length) {
+                if (loopMode === 'all') ni = 0;
+                else return; // stop at end of playlist
+            }
+            plIdx = ni;
+            play(plist[plIdx].id, plist[plIdx].title);
+        }
+        function setVol(v) {
+            if (player?.setVolume) player.setVolume(v);
+            localStorage.setItem('vol', v);
+        }
 
         // Fullscreen
         function toggleFS() { fsMode ? exitFS() : enterFS(); }
@@ -658,6 +835,8 @@
             document.getElementById('mCur').textContent = fmt(c);
             document.getElementById('pcDur').textContent = fmt(t);
             document.getElementById('mDur').textContent = fmt(t);
+            progTick++;
+            if (progTick % 6 === 0) saveLastState(); // ~every 3s
         }
         function seek(e) {
             if (!player?.getDuration) return;
@@ -683,6 +862,13 @@
             saveP(); renderP(); renderR();
         }
         function rmPl(i) { plist.splice(i,1); if(plIdx>=plist.length)plIdx=plist.length-1; saveP();renderP();renderR(); }
+        function clearPlaylist() {
+            if (!plist.length) return;
+            if (!confirm('ต้องการล้างเพลงทั้งหมดใน Playlist ใช่ไหม?')) return;
+            plist = [];
+            plIdx = -1;
+            saveP(); renderP(); renderR();
+        }
         function playPl(i) { plIdx=i; play(plist[i].id,plist[i].title); }
         function saveP() { localStorage.setItem('kp',JSON.stringify(plist)); const c=plist.length; document.getElementById('pc').textContent=c; document.getElementById('mc').textContent=c; }
         function renderP() {
@@ -698,8 +884,8 @@
             document.getElementById('pcPE').style.display='none';
             document.getElementById('mPE').style.display='none';
             const html = plist.map((s,i)=>`<div class="song ${plIdx===i?'playing':''}" onclick="playPl(${i})">
-                <img class="song-thumb" src="${s.thumb}" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${s.id}/mqdefault.jpg'">
-                <div class="song-info"><div class="song-title">${s.title}</div><div class="song-meta">${s.channel}</div></div>
+                <img class="song-thumb" src="${escapeHtml(s.thumb)}" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${escapeHtml(s.id)}/mqdefault.jpg'">
+                <div class="song-info"><div class="song-title">${escapeHtml(s.title)}</div><div class="song-meta">${escapeHtml(s.channel)}</div></div>
                 <div><button class="act" onclick="event.stopPropagation();rmPl(${i})">🗑️</button></div>
             </div>`).join('');
             document.getElementById('pcPL').innerHTML = html;
@@ -723,6 +909,11 @@
         }
 
         function fmt(s) { s=Math.floor(s); return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); }
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
 
         // Keyboard seek (arrow keys) — ignore when typing in an input
         document.addEventListener('keydown', e => {

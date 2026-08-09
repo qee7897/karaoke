@@ -403,7 +403,9 @@
             <div class="controls">
                 <div class="ctrls">
                     <button class="ctrl" onclick="prev()">⏮</button>
+                    <button class="ctrl" onclick="seekBy(-10)" title="ถอยหลัง 10 วินาที">⏪</button>
                     <button class="ctrl" id="pcPP" onclick="togglePlay()">▶️</button>
+                    <button class="ctrl" onclick="seekBy(10)" title="เดินหน้า 10 วินาที">⏩</button>
                     <button class="ctrl" onclick="next()">⏭</button>
                 </div>
                 <span class="time" id="pcCur">0:00</span>
@@ -464,7 +466,9 @@
             <div class="mobile-controls">
                 <div class="ctrls">
                     <button class="ctrl" onclick="prev()">⏮</button>
+                    <button class="ctrl" onclick="seekBy(-10)" title="ถอยหลัง 10 วินาที">⏪</button>
                     <button class="ctrl" id="mPP" onclick="togglePlay()">▶️</button>
+                    <button class="ctrl" onclick="seekBy(10)" title="เดินหน้า 10 วินาที">⏩</button>
                     <button class="ctrl" onclick="next()">⏭</button>
                 </div>
                 <span class="time" id="mCur">0:00</span>
@@ -639,7 +643,17 @@
             if (!player?.getDuration) return;
             const b = e.currentTarget;
             const cx = e.touches ? e.touches[0].clientX : e.clientX;
-            player.seekTo(((cx-b.getBoundingClientRect().left)/b.width)*player.getDuration(), true);
+            const rect = b.getBoundingClientRect();
+            const ratio = Math.min(Math.max((cx - rect.left) / rect.width, 0), 1);
+            player.seekTo(ratio * player.getDuration(), true);
+        }
+        function seekBy(sec) {
+            if (!player?.getDuration) return;
+            const dur = player.getDuration() || 0;
+            const cur = player.getCurrentTime() || 0;
+            const t = Math.min(Math.max(cur + sec, 0), dur);
+            player.seekTo(t, true);
+            updProg();
         }
 
         // Playlist
@@ -689,6 +703,15 @@
         }
 
         function fmt(s) { s=Math.floor(s); return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); }
+
+        // Keyboard seek (arrow keys) — ignore when typing in an input
+        document.addEventListener('keydown', e => {
+            const tag = document.activeElement?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            if (e.key === 'ArrowRight') { e.preventDefault(); seekBy(10); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); seekBy(-10); }
+            else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        });
 
         document.getElementById('q').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
         if (document.getElementById('q2')) {

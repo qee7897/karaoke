@@ -618,12 +618,32 @@
         function toggleFS() { fsMode ? exitFS() : enterFS(); }
         function enterFS() {
             fsMode = true; document.body.classList.add('fs-mode');
+            const el = document.documentElement;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+            try { if (req) req.call(el).catch?.(()=>{}); } catch(e) {}
             try { if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(()=>{}); } catch(e) {}
         }
         function exitFS() {
             fsMode = false; document.body.classList.remove('fs-mode');
+            const exitReq = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+            try {
+                if (exitReq && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                    exitReq.call(document).catch?.(()=>{});
+                }
+            } catch(e) {}
             try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch(e) {}
         }
+        // Keep app state in sync if user exits fullscreen via browser UI (Esc, swipe, etc.)
+        ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+                if (!isFs && fsMode) {
+                    fsMode = false;
+                    document.body.classList.remove('fs-mode');
+                    try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch(e) {}
+                }
+            });
+        });
 
         // Progress
         function startProg() { stopProg(); prog = setInterval(updProg, 500); }
